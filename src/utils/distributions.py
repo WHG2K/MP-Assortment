@@ -5,43 +5,6 @@ from scipy import integrate
 from typing import Union, Tuple
 from functools import partial
 
-
-# # 封装的积分函数
-# def integrate_function(a):
-#     # 定义 integrand，利用 partial 绑定参数 'a'
-#     def integrand(x, a):
-#         return a * np.sin(x)
-
-#     # 使用 partial 绑定 'a'
-#     integrand_with_a = partial(integrand, a=a)
-
-#     # 执行积分
-#     result = integrate.quad_vec(integrand_with_a, 0, np.pi, workers=2)
-#     return result
-
-
-# 使用类来封装 integrand
-# class Integrand:
-#     def __init__(self, a):
-#         self.a = a
-
-#     def __call__(self, x):
-#         return self.a * np.sin(x)
-
-# # 封装的积分函数
-# def integrate_function(a):
-#     integrand = Integrand(a)
-#     result = integrate.quad_vec(integrand, 0, np.pi, workers=2)
-#     return result
-
-
-
-
-
-
-
-
-
 class Distribution(ABC):
     @abstractmethod
     def __init__(self):

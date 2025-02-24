@@ -85,6 +85,7 @@ class BinaryProgramSolver:
         
         with self.gp.Env(empty=True) as env:
             env.setParam('OutputFlag', 0)
+            # env.setParam('Threads', 16)
             env.start()
             
             with self.gp.Model(env=env) as model:

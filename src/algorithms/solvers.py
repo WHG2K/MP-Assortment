@@ -178,40 +178,6 @@ class MPAssortSurrogate:
         x = np.round(x).astype(int)
         
         return x, rsp_w
-    
-    # def _compute_purchasing_probs(self, w):
-    #     """Compute purchasing probabilities using numerical integration
-        
-    #     Calculates P(u[j] + X > max(w[i], Y)) for all pairs of i,j where
-    #     X and Y are independent random variables following the distribution
-    #     specified by distr.
-        
-    #     Args:
-    #         u (np.ndarray): Vector of utility values
-    #         w (np.ndarray): Vector of weight values
-    #         distr (Distribution): Distribution object with pdf and cdf methods
-            
-    #     Returns:
-    #         np.ndarray: Matrix of shape (len(w), len(u)) containing probabilities
-            
-    #     Note:
-    #         Uses parallel computation with 8 workers for faster integration
-    #     """
-    #     # Create integrand object
-    #     integrand = _Integrand_for_Purchasing_Probs(self.u, w, self.distr)
-        
-    #     # Compute integral from -10 to 10
-    #     # The interval [-10, 10] is chosen as a reasonable approximation of (-∞, ∞)
-    #     result, _ = quad_vec(
-    #             integrand,
-    #             a=-10, b=10,
-    #             epsabs=1e-6,  # absolute error tolerance
-    #             epsrel=1e-6,  # relative error tolerance
-    #             full_output=False,
-    #             workers=8  # use 8 workers for parallel computation
-    #         )
-        
-    #     return result.reshape(len(w), len(self.u))
 
     def _probs_U_exceed_w(self, w: np.ndarray) -> np.ndarray:
         """Compute P(u[j] + X > w[i]) for all pairs of i,j
@@ -241,10 +207,10 @@ class MPAssortSurrogate:
         result, _ = quad_vec(
                 integrand,
                 a=-10, b=10,
-                epsabs=1e-6,  # absolute error tolerance
-                epsrel=1e-6,  # relative error tolerance
+                epsabs=1e-3,  # absolute error tolerance
+                epsrel=1e-3,  # relative error tolerance
                 full_output=False,
-                workers=8  # use 8 workers for parallel computation
+                workers=1  # set 1 just for now.
             )
         
         return np.array(result).reshape(-1)
@@ -320,64 +286,12 @@ class MPAssortSurrogate:
         w = self._w_x(x)
         # compute pi_hat(x)
         return np.dot(x, self._probs_buying_surrogate(w) * self.r)
-
-
-class _Integrand_for_Purchasing_Probs:
-    """A class to encapsulate the integrand function for purchasing probability computation, 
-    mainly used to enable parallel computation.
     
-    This class implements the integrand function needed to compute P(u[j] + X > max(w[i], Y))
-    where X and Y are independent random variables following the same distribution.
-    
-    Attributes:
-        u (np.ndarray): Utility values vector
-        w (np.ndarray): Weight values vector
-        distr (Distribution): Distribution object that provides pdf and cdf methods
-    """
-    
-    def __init__(self, u, w, distr):
-        """Initialize the integrand with utility values, weights, and distribution
-        
-        Args:
-            u (np.ndarray): Vector of utility values
-            w (np.ndarray): Vector of weight values
-            distr (Distribution): Distribution object with pdf and cdf methods
-        """
-        self.u = u
-        self.w = w
-        self.distr = distr
 
-    def __call__(self, x):
-        """Compute the integrand matrix for a given x value
-        
-        For each x, computes a matrix T where
-        T[i,j] = P(Y < u[j] + x) * I(w[i] < u[j] + x) * f_X(x)
-        
-        The result represents the contribution to the probability that
-        u[j] + X exceeds both w[i] and Y at the point x.
-        
-        Args:
-            x (float): Point at which to evaluate the integrand
-            
-        Returns:
-            np.ndarray: Matrix of shape (len(w), len(u)) containing probabilities
-        """
-        u = self.u
-        w = self.w
-        distr = self.distr
-
-        # Add x to each utility value (broadcasting to shape (1, len(u)))
-        u_plus_x = u[None, :] + x
-        
-        # Create indicator matrix for w[i] < u[j] + x condition
-        # Shape: (len(w), len(u))
-        indicator = (w[:, None] < u_plus_x)
-        
-        # Get CDF values for u + x
-        # Shape: (1, len(u))
-        cdf_values = distr.cdf(u_plus_x)
-        
-        return indicator * cdf_values * distr.pdf(x)
+    def __call__(self, x: np.ndarray) -> float:
+        """Compute the value of pi(x). Mainly served for parallel computation."""
+        return self._pi_hat(x)
+    
 
 
 
@@ -457,7 +371,8 @@ class MPAssortOriginal:
                  r: Union[List[float], np.ndarray],
                  B: Union[int, Dict[int, float]],
                  distr: Distribution,
-                 C: Union[int, Tuple[int, int]]):
+                 C: Union[int, Tuple[int, int]],
+                 samples: np.ndarray = None):
         """Initialize the algorithm class
         
         Args:
@@ -521,6 +436,9 @@ class MPAssortOriginal:
         # Store number of products
         self.N = len(self.u) 
 
+        # store a sample for __call__
+        self._samples = samples
+
     def generate_samples(self, n_samples: int) -> np.ndarray:
         """Generate samples from the random utility error term"""
         return self.distr.random_sample((n_samples, self.N+1))
@@ -565,3 +483,9 @@ class MPAssortOriginal:
         pi_x_monte_carlo = np.sum(weighted_sum * selected_r[None, :]) / n_samples
         
         return pi_x_monte_carlo
+    
+    def __call__(self, x: np.ndarray) -> float:
+        """Compute the value of pi(x) using Monte Carlo simulation. 
+           Mainly served for parallel computation."""
+        return self._pi_monte_carlo(x, self._samples)
+
