@@ -2,6 +2,7 @@ import numpy as np
 from typing import Union, Tuple, List, Dict
 from src.utils.distributions import Distribution
 from src.utils.bilp_optimizers import BinaryProgramSolver
+from src.utils.lp_optimizers import LinearProgramSolver
 from scipy.integrate import quad_vec
 import time
 
@@ -122,17 +123,11 @@ class MPAssortSurrogate:
             raise ValueError(f"Length of w ({len(w)}) must match the number of support points in B ({len(self.B)})")
         
         # Compute LP parameters
-        t0 = time.time()
         c, A, b = self._compute_LP_parameters(w)
-        t1 = time.time()
-        self.last_param_time = t1 - t0
         
         # Create solver and solve the binary program
-        t0 = time.time()
         bilp_solver = BinaryProgramSolver(solver=solver)
         sp_w, x, status = bilp_solver.maximize(c, A, b)
-        t1 = time.time()
-        self.last_solve_time = t1 - t0
         
         if status != 'Optimal':
             raise ValueError(f"Failed to solve SP: {status}")
@@ -141,6 +136,48 @@ class MPAssortSurrogate:
         x = np.round(x).astype(int)
         
         return x, sp_w
+    
+
+    def RSP(self, w: Union[List[float], np.ndarray, float], solver: str = 'pulp') -> Tuple[np.ndarray, float]:
+        """ Compute RSP(w)
+        
+        Args:
+            w: vector of length |B|.
+            solver: Solver to use for the binary program
+        
+        Returns:
+            Tuple[np.ndarray, float]: (
+                x: best assortment under RSP(w),
+                rsp_w: Value of the RSP(w)
+            )
+            
+        Raises:
+            ValueError: If length of w doesn't match the basket size distribution support
+        """
+        # Convert input to 1D numpy array
+        if np.isscalar(w):
+            w = np.array([w])
+        else:
+            w = np.asarray(w).flatten()
+        
+        # Validate input
+        if len(w) != len(self.B):
+            raise ValueError(f"Length of w ({len(w)}) must match the number of support points in B ({len(self.B)})")
+        
+        # Compute LP parameters
+        c, A, b = self._compute_LP_parameters(w)
+        
+        # Create solver and solve the binary program
+        lp_solver = LinearProgramSolver(solver=solver)
+        rsp_w, x, status = lp_solver.maximize(c, A, b)
+        
+        if status != 'Optimal':
+            raise ValueError(f"Failed to solve SP: {status}")
+        
+        # Convert solution to integer array
+        x = np.round(x).astype(int)
+        
+        return x, rsp_w
     
     # def _compute_purchasing_probs(self, w):
     #     """Compute purchasing probabilities using numerical integration
