@@ -287,6 +287,23 @@ class MPAssortSurrogate:
         # compute pi_hat(x)
         return np.dot(x, self._probs_buying_surrogate(w) * self.r)
     
+    def _get_box_constraints(self) -> List[Tuple[float, float]]:
+        """Get box constraints for w variables"""
+        # get the rankings of utilities
+        sorted_indices = np.argsort(-self.u)
+
+        # get the C[0] lowest and C[1] highest utilities
+        x_min = np.zeros(len(self.u))
+        x_min[sorted_indices[-self.C[0]:]] = 1
+        x_max = np.zeros(len(self.u))
+        x_max[sorted_indices[:self.C[1]]] = 1
+
+        # get the box constraints for w
+        w_low = self._w_x(x_min)
+        w_high = self._w_x(x_max)
+        
+        return [(w_low[i], w_high[i]) for i in range(len(self._Bs))]
+    
 
     def __call__(self, x: np.ndarray) -> float:
         """Compute the value of pi(x). Mainly served for parallel computation."""
