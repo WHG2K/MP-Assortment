@@ -3,7 +3,7 @@ from typing import Union, Tuple, List, Dict
 from src.utils.distributions import Distribution
 from src.utils.bilp_optimizers import BinaryProgramSolver
 from src.utils.lp_optimizers import LinearProgramSolver
-from scipy.integrate import quad_vec
+# from scipy.integrate import quad_vec
 import time
 
 class MPAssortSurrogate:
@@ -199,21 +199,23 @@ class MPAssortSurrogate:
         Returns:
             np.ndarray: vector of length N.
         """
-        # Create integrand object
-        integrand = _Integrand_purchasing_probs(self.u, w, self._B_probs, self.distr)
+
+        return self.distr._compute_c_vector(self.u, w, self._B_probs)
+        # # Create integrand object
+        # integrand = _Integrand_purchasing_probs(self.u, w, self._B_probs, self.distr)
         
-        # Compute integral from -10 to 10
-        # The interval [-10, 10] is chosen as a reasonable approximation of (-∞, ∞)
-        result, _ = quad_vec(
-                integrand,
-                a=-10, b=10,
-                epsabs=1e-3,  # absolute error tolerance
-                epsrel=1e-3,  # relative error tolerance
-                full_output=False,
-                workers=1  # set 1 just for now.
-            )
+        # # Compute integral from -10 to 10
+        # # The interval [-10, 10] is chosen as a reasonable approximation of (-∞, ∞)
+        # result, _ = quad_vec(
+        #         integrand,
+        #         a=-10, b=10,
+        #         epsabs=1e-3,  # absolute error tolerance
+        #         epsrel=1e-3,  # relative error tolerance
+        #         full_output=False,
+        #         workers=1  # set 1 just for now.
+        #     )
         
-        return np.array(result).reshape(-1)
+        # return np.array(result).reshape(-1)
 
     def _compute_LP_parameters(self, w: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Compute the parameters (c, A, b) for the binary integer linear program

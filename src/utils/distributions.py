@@ -47,6 +47,9 @@ class Distribution(ABC):
         """
         pass
 
+    def _compute_c_vector(self, u, w, weights):
+        """Compute the c vector for the distribution"""
+        pass
 
 
 class NegExp(Distribution):
@@ -107,6 +110,30 @@ class GumBel(Distribution):  # using Euler-Mascheroni Constant to get zero mean
     def random_sample(self, size: Union[int, Tuple[int, ...]]) -> np.ndarray:
         return -self.eta*np.euler_gamma - self.eta * np.log(-np.log(np.random.uniform(size=size)))
 
+    def _compute_c_vector(self, u: np.ndarray, w: np.ndarray, weights: np.ndarray) -> np.ndarray:
+        """Compute c vector for each product based on utilities and weights.
+        ONLY FITS STANDARD GUMBEL DISTRIBUTION CURRENTLY.
+        
+        Args:
+            u: Utility vector of shape (N,)
+            w: Weight vector of shape (K,)
+            weights: Weight vector for weighted sum of shape (K,)
+            
+        Returns:
+            c: Vector of shape (N,) containing weighted sum of probabilities
+        """
+        # 将u和w调整为适合广播的形状
+        u = u.reshape(1, -1)  # shape: (1, N)
+        w = w.reshape(-1, 1) + np.euler_gamma  # shape: (K, 1)
+        
+        # 向量化计算矩阵
+        matrix = 1/(1 + np.exp(-u)) * (1 - np.exp(-(np.exp(u)+1)*np.exp(-w)))
+        
+        # 使用weights计算加权和，得到长度为len(u)的向量
+        c = np.dot(weights, matrix)
+        
+        return c
+
 class UniForm(Distribution):
     def __init__(self, delta=1.0):
         self.delta = delta
@@ -162,4 +189,5 @@ class BimodalNormal(Distribution):
         normal_1 = np.random.normal(loc=-self.loc, scale=self.std, size=size)
         normal_2 = np.random.normal(loc=self.loc, scale=self.std, size=size)
         B = np.random.binomial(1, self.p, size=size)
+        return B*normal_1 + (1-B)*normal_2
         return B*normal_1 + (1-B)*normal_2

@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.special import softmax
-from src.utils.distributions import NorMal
+from src.utils.distributions import GumBel
 from src.algorithms.solvers import MPAssortSurrogate
 
 if __name__ == '__main__':
@@ -19,7 +19,7 @@ if __name__ == '__main__':
     B = dict(zip(basket_sizes, probs))
     
     # Other parameters
-    distr = NorMal(std=1.0)
+    distr = GumBel()
     C = (3, 7)
     
     # Create solver instance
@@ -36,12 +36,12 @@ if __name__ == '__main__':
     print("Testing π_hat(x) computation...")
     print("\nAssortment 1:")
     print(f"x1: {x1}")
-    pi_hat_x1 = algo._pi_hat_x(x1)
+    pi_hat_x1 = algo._pi_hat(x1)
     print(f"π_hat(x1): {pi_hat_x1:.4f}")
     
     print("\nAssortment 2:")
     print(f"x2: {x2}")
-    pi_hat_x2 = algo._pi_hat_x(x2)
+    pi_hat_x2 = algo._pi_hat(x2)
     print(f"π_hat(x2): {pi_hat_x2:.4f}")
     
     # Print the revenues for comparison

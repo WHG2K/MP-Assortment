@@ -38,18 +38,25 @@ if __name__ == "__main__":
         print(f"Range of w[{i}]: [{bounds[i][0]:.4f}, {bounds[i][1]:.4f}]")
     print()
     
-    # Test both solvers
+    # Bayesian optimization
     print("\n=== Bayesian Optimization ===")
-    optimizer_bayes = NonconvexOptimizer(
+    optimizer = NonconvexOptimizer(
         n_dims=len(B),
         bounds=bounds,
         solver='BAYESIAN',
-        solver_params={'n_calls': 50}
+        solver_params={
+            'n_calls': 200,  # 总评估次数
+            'n_random_starts': 20,  # 随机初始点数量
+            'n_jobs': 8,  # 使用所有可用CPU核心
+            'acq_func': 'EI',  # Expected Improvement acquisition function
+            'noise': 1e-10,
+            'random_state': 42
+        }
     )
     
     # Optimize RSP
     start_time = time.time()
-    w_opt, val_opt = optimizer_bayes.maximize(lambda w: sp.RSP(w)[1])
+    w_opt, val_opt = optimizer.maximize(lambda w: sp.RSP(w)[1])
     solve_time = time.time() - start_time
     
     print(f"Optimal w: {np.round(w_opt, 4)}")
