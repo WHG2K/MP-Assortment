@@ -13,6 +13,7 @@ def branch_and_bound(f, f_lb, f_ub, box_low, box_high, tolerance=1e-3):
     # lb = f_lb(box_low, box_high)
     # ub = f_ub(box_low, box_high)
     queue = deque([(box_low, box_high)])  # 队列存储子问题，开始时存储整个范围
+    layer = 0
 
     # 迭代分支定界
     while True:
@@ -55,7 +56,8 @@ def branch_and_bound(f, f_lb, f_ub, box_low, box_high, tolerance=1e-3):
             queue.append((left_box_low, left_box_high))
             queue.append((right_box_low, right_box_high))
 
-        print("ub=", ub, "lb=", lb)
+        # print(f"Layer={layer:2d}, ub={ub:.4f}, lb={lb:.4f}")
+        layer += 1
         
 
         # 如果满足终止条件，即当前子问题的上界和下界之差小于容忍误差，输出当前中点
