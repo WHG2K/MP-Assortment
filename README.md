@@ -2,6 +2,7 @@
 
 ## TODO List
 
-- [ ] SP & RSP algorithms
-- [ ] OP brute force
+- [ ] Brand-and-bound (B&B) algorithm as a multi-dimensional line search. (very promising)
+- [ ] General nonlinear solvers.
+- [ ] Advanced numerical techniques to efficiently compute $P(u+X>max(w,Y))$ (might be very difficult).
  

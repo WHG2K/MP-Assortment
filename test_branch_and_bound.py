@@ -9,23 +9,23 @@ from src.algorithms.BB import branch_and_bound
 A test example for branch and bound
 '''
 
-# 定义目标函数
+# Define objective function
 def test_obj(x):
     x = np.array(x, dtype=float).reshape(-1)
-    return -np.sum(x ** 2) # 最大化问题，取负号
+    return -np.sum(x ** 2) # Maximization problem, take negative
 
-# 定义下界函数（最小可能值）
+# Define lower bound function (minimum possible value)
 def test_lb(lower_bounds, upper_bounds):
     lower_bounds = np.array(lower_bounds, dtype=float).reshape(-1)
     upper_bounds = np.array(upper_bounds, dtype=float).reshape(-1)
-    # 简单实现：使用上界点的目标函数值
+    # Simple implementation: use objective value at lower bounds
     return -np.sum(lower_bounds ** 2), lower_bounds
 
-# 定义上界函数（最大可能值）
+# Define upper bound function (maximum possible value)
 def test_ub(lower_bounds, upper_bounds):
     lower_bounds = np.array(lower_bounds, dtype=float).reshape(-1)
     upper_bounds = np.array(upper_bounds, dtype=float).reshape(-1)
-    # 简单实现：使用下界点的目标函数值
+    # Simple implementation: use objective value at upper bounds
     a = np.zeros(len(lower_bounds), dtype=float)
     for i in range(len(lower_bounds)):
         if (lower_bounds[i] * upper_bounds[i]) > 0:
@@ -95,19 +95,12 @@ if __name__ == "__main__":
     # a = np.array([1, 2, 3])
     # print(a ** 2)
     
-    box_low = np.array([-1, -1, -1], dtype=float)  # 目标函数下界
-    box_high = np.array([2, 2, 2], dtype=float)  # 目标函数上界
+    box_low = np.array([-1, -1, -1], dtype=float)  # Lower bounds of objective function
+    box_high = np.array([2, 2, 2], dtype=float)  # Upper bounds of objective function
 
-    # 运行分支定界算法
+    # Run branch and bound algorithm
     best_solution, best_objective = branch_and_bound(test_obj, test_lb, test_ub, box_low, box_high)
 
-    print(f"最优解: {best_solution}")
-    print(f"最优目标函数值: {best_objective}")
-
-    # for _ in range(10):
-    #     x = np.random.uniform(-1, 2, size=3)
-    #     print(test_obj(x), test_lb(x-0.1, x+0.1), test_ub(x-0.1, x+0.1))
-
-    print(test_lb([0.5, 0.5, 0.5], [2, 2, 2]))
-    print(test_ub([0.5, 0.5, 0.5], [2, 2, 2]))
+    print(f"Optimal solution: {best_solution}")
+    print(f"Optimal objective value: {best_objective}")
     
