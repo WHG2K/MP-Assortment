@@ -4,14 +4,12 @@ from collections import deque
 
 
 # Branch and Bound Algorithm
-def branch_and_bound(f, f_lb, f_ub, box_low, box_high, tolerance=1e-3):
+def branch_and_bound(f, f_lb, f_ub, box_low, box_high, tolerance=1e-3, min_box_size=1e-1):
     # Initialize optimal solution and best lower bound
     best_solution = None
     best_objective = -np.inf
     lb = -np.inf   # Global lower bound of optimal solution
-    # ub = np.inf   # Global upper bound of optimal solution
-    # lb = f_lb(box_low, box_high)
-    # ub = f_ub(box_low, box_high)
+
     queue = deque([(box_low, box_high)])  # Queue stores subproblems, initially stores the entire range
     layer = 0
 
@@ -29,7 +27,7 @@ def branch_and_bound(f, f_lb, f_ub, box_low, box_high, tolerance=1e-3):
             lb_current, x = f_lb(box_low, box_high)  # Calculate lower bound of current subproblem
             ub_current = f_ub(box_low, box_high)  # Calculate upper bound of current subproblem
             # Pruning
-            if ub_current < lb:
+            if (ub_current < lb) or (np.max(np.abs(box_high - box_low)) < min_box_size):
                 continue
             # Update lb, ub and global optimal solution
             ub = max(ub, ub_current)
