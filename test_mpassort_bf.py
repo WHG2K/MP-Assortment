@@ -1,9 +1,66 @@
 import numpy as np
 from scipy.special import softmax
 from src.utils.brute_force import BruteForceOptimizer
-from src.algorithms.solvers import MPAssortOriginal, MPAssortSurrogate
+from src.algorithms.models import MPAssortOriginal, MPAssortSurrogate
 from src.utils.distributions import GumBel
+from src.utils.lp_optimizers import LinearProgramSolver
 import time
+
+
+
+'''
+rsp objective functions
+'''
+
+class RSP_obj:
+    def __init__(self, model):
+        self.model = model
+
+    def __call__(self, w):
+        return self.model.RSP(w)
+    
+class RSP_ub:
+    def __init__(self, model):
+        self.model = model
+
+    def __call__(self, box_low, box_high):
+
+        # Compute objective coefficients c
+        c = self.model._probs_buying_surrogate(box_low) * self.model.r
+        
+        # Construct constraint matrix A
+        A = np.vstack([
+            self.model._probs_U_exceed_w(box_high),  # First |B| rows are P(u[j] + X > w[i])
+            np.ones(self.N),   # Cardinality upper bound
+            -np.ones(self.N)   # Cardinality lower bound
+        ])
+        
+        # Compute RHS vector b
+        b = np.concatenate([
+            self.model._Bs,
+            [self.model.C[1], -self.model.C[0]]
+        ])
+
+        lp_solver = LinearProgramSolver(c, A, b)
+        upper_bound, _, status = lp_solver.maximize(c, A, b)
+        if status != 'Optimal':
+            raise ValueError(f"Failed to solve RSP upper bound: {status}")
+        return upper_bound
+    
+class RSP_lb:
+    def __init__(self, model):
+        self.model = model
+
+    def __call__(self, box_low, box_high):
+        box_middle = (box_low + box_high) / 2
+        rsp_box_low = self.model.RSP(box_low)
+        rsp_box_high = self.model.RSP(box_high)
+        rsp_box_middle = self.model.RSP(box_middle)
+
+        return max(rsp_box_low, rsp_box_middle, rsp_box_high)
+
+
+
 
 
 

@@ -1,6 +1,6 @@
 import numpy as np
 from src.utils.distributions import NorMal
-from src.algorithms.solvers import MPAssortOriginal
+from algorithms.models import MPAssortOriginal
 
 if __name__ == '__main__':
     # Set random seed for reproducibility

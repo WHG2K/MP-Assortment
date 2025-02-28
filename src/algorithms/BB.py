@@ -24,6 +24,7 @@ def branch_and_bound(f, f_lb, f_ub, box_low, box_high, tolerance=1e-3):
 
         # Process all nodes in current layer
         for _ in range(layer_len):
+            # print(queue)
             box_low, box_high = queue.popleft()
             lb_current, x = f_lb(box_low, box_high)  # Calculate lower bound of current subproblem
             ub_current = f_ub(box_low, box_high)  # Calculate upper bound of current subproblem
@@ -55,7 +56,7 @@ def branch_and_bound(f, f_lb, f_ub, box_low, box_high, tolerance=1e-3):
             queue.append((left_box_low, left_box_high))
             queue.append((right_box_low, right_box_high))
 
-        # print(f"Layer={layer:2d}, ub={ub:.4f}, lb={lb:.4f}")
+        print(f"Layer={layer:2d}, ub={ub:.4f}, lb={lb:.4f}")
         layer += 1
         
         if ub - lb < tolerance:

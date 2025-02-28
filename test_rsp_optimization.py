@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import softmax
 from src.utils.distributions import GumBel
-from src.algorithms.solvers import MPAssortSurrogate, MPAssortOriginal
+from algorithms.models import MPAssortSurrogate, MPAssortOriginal
 from src.utils.nonconvex_optimizer import NonconvexOptimizer
 from src.utils.brute_force import BruteForceOptimizer
 import time

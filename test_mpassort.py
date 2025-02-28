@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import softmax
 from src.utils.distributions import GumBel
-from src.algorithms.solvers import MPAssortSurrogate
+from algorithms.models import MPAssortSurrogate
 import time
 
 if __name__ == "__main__":
