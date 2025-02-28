@@ -43,7 +43,7 @@ if __name__ == "__main__":
     box_high = np.array([2, 2, 2], dtype=float)  # Upper bounds of objective function
 
     # Run branch and bound algorithm
-    best_solution, best_objective = branch_and_bound(test_obj, test_lb, test_ub, box_low, box_high, tolerance=1e-2, min_box_size=5e-2)
+    best_solution, best_objective = branch_and_bound(test_obj, test_lb, test_ub, box_low, box_high, tolerance=1e-2, min_box_size=1e-1)
 
     print(f"Optimal solution: {best_solution}")
     print(f"Optimal objective value: {best_objective}")
