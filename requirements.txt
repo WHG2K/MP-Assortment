@@ -1,3 +1,11 @@
-numpy 
+numpy
 scipy
 python-dotenv
+multiprocess
+scikit-optimize
+pyswarms
+gurobipy  # for gurobi optimization
+pulp      # for linear programming
+pandas    # for data processing
+matplotlib  # for plotting
+tqdm      # for progress bars
