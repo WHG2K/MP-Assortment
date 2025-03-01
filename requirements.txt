@@ -1,9 +1,7 @@
 numpy
 scipy
 python-dotenv
-multiprocess
 scikit-optimize
-pyswarms
 gurobipy  # for gurobi optimization
 pulp      # for linear programming
 pandas    # for data processing
