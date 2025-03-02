@@ -58,7 +58,7 @@ class NegExp(Distribution):
     
     def get_name(self):
         lmd = self.lmd
-        return "NegExp-"+str(lmd)
+        return "NegExp"
     
     def cdf(self, t):
         if isinstance(t, list):
@@ -79,7 +79,7 @@ class NorMal(Distribution):  # always assume mean 0
     
     def get_name(self):
         std = self.std
-        return "NorMal-"+str(std)
+        return "NorMal"
     
     def cdf(self, t):
         return norm.cdf(t, loc=0.0, scale=self.std)
@@ -96,7 +96,7 @@ class GumBel(Distribution):  # using Euler-Mascheroni Constant to get zero mean
     
     def get_name(self):
         eta = self.eta
-        return "GumBel-"+str(eta)
+        return "GumBel"
     
     def cdf(self, t):
         if isinstance(t, list):
@@ -140,7 +140,7 @@ class UniForm(Distribution):
     
     def get_name(self):
         delta = self.delta
-        return "UniForm-"+str(delta)
+        return "UniForm"
     
     def cdf(self, t):
         if isinstance(t, list):
@@ -173,7 +173,7 @@ class BimodalNormal(Distribution):
         loc = self.loc
         p = self.p
         std = self.std
-        return "BimodalNormal-"+str(loc)+"-"+str(p)+"-"+str(std)
+        return "BimodalNormal"
     
     def cdf(self, t):
         if isinstance(t, list):
