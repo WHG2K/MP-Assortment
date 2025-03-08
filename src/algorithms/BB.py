@@ -96,12 +96,12 @@ def branch_and_bound(f, f_lb, f_ub, box_low, box_high, tolerance=0.05, min_box_s
                 new_queue.extend(new_boxes)
             
             queue = new_queue
-            print(f"Layer={layer:2d}, ub={ub:.4f}, lb={lb:.4f}")
+            # print(f"Layer={layer:2d}, ub={ub:.4f}, lb={lb:.4f}")
             layer += 1
             
             if ub - lb < tolerance * ub:
-                print(f"Converged at layer={layer:2d}, ub={ub:.4f}, lb={lb:.4f}, tol={(tolerance * ub):.4f}")
+                # print(f"Converged at layer={layer:2d}, ub={ub:.4f}, lb={lb:.4f}, tol={(tolerance * ub):.4f}")
                 return best_solution, f(best_solution)
     
-    print(f"Reaching min box size")
-    return best_solution, f(best_solution)
+        # print(f"Reaching min box size")
+        return best_solution, f(best_solution)

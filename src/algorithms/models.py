@@ -390,8 +390,7 @@ class MPAssortOriginal:
                  r: Union[List[float], np.ndarray],
                  B: Union[int, Dict[int, float]],
                  distr: Distribution,
-                 C: Union[int, Tuple[int, int]],
-                 samples: np.ndarray = None):
+                 C: Union[int, Tuple[int, int]]):
         """Initialize the algorithm class
         
         Args:
@@ -453,10 +452,7 @@ class MPAssortOriginal:
         self._B_probs = np.array([self.B[k] for k in self._Bs])
         
         # Store number of products
-        self.N = len(self.u) 
-
-        # store a sample for __call__
-        self._samples = samples
+        self.N = len(self.u)
 
     def generate_samples(self, n_samples: int) -> np.ndarray:
         """Generate samples from the random utility error term"""
@@ -502,9 +498,4 @@ class MPAssortOriginal:
         pi_x_monte_carlo = np.sum(weighted_sum * selected_r[None, :]) / n_samples
         
         return pi_x_monte_carlo
-    
-    def __call__(self, x: np.ndarray) -> float:
-        """Compute the value of pi(x) using Monte Carlo simulation. 
-           Mainly served for parallel computation."""
-        return self._pi_monte_carlo(x, self._samples)
 

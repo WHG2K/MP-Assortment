@@ -1,9 +1,9 @@
 numpy
 scipy
 python-dotenv
-scikit-optimize
 gurobipy  # for gurobi optimization
 pulp      # for linear programming
 pandas    # for data processing
 matplotlib  # for plotting
 tqdm      # for progress bars
+openpyxl

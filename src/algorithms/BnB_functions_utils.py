@@ -125,3 +125,12 @@ class RSP_lb:
                 val_best = val
                 x_best = x
         return val_best, x_best
+    
+
+class OP_obj:
+    def __init__(self, model, random_comps):
+        self.model = model
+        self.random_comps = random_comps
+
+    def __call__(self, x):
+        return self.model._pi_monte_carlo(x, random_comps=self.random_comps)

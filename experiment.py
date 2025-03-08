@@ -4,10 +4,13 @@ from src.utils.distributions import GumBel
 import pickle
 from tqdm import tqdm
 import time
-from src.algorithms.models import MPAssortSurrogate
+from src.algorithms.models import MPAssortSurrogate, MPAssortOriginal
 from src.algorithms.BB import branch_and_bound
-from src.utils.lp_optimizers import LinearProgramSolver
-from src.algorithms.BnB_functions_utils import RSP_obj, RSP_ub, RSP_lb, SP_obj, SP_ub, SP_lb
+from src.utils.brute_force import BruteForceOptimizer
+from src.algorithms.BnB_functions_utils import RSP_obj, RSP_ub, RSP_lb, SP_obj, SP_ub, SP_lb, OP_obj
+from dotenv import load_dotenv
+import os
+load_dotenv(override=True)
 
 
 def generate_instances(N=15, C=(8,8), distr="GumBel", random_seed=2025, n_instances=100):
@@ -65,14 +68,14 @@ def save_instances(instances, file_name='instances.pkl'):
     with open(file_name, 'wb') as f:
         pickle.dump(instances, f)
 
-def solve_instances(pkl_file='instances.pkl'):
+def solve_instances(input_file, output_file, num_workers=8):
     """Solve instances using SP BnB and RSP BnB methods
     
     Args:
         pkl_file: Name of pickle file containing instances
     """
     # Load instances
-    with open(pkl_file, 'rb') as f:
+    with open(input_file, 'rb') as f:
         instances = pickle.load(f)
     
     print(f"Solving {len(instances)} instances...")
@@ -106,9 +109,9 @@ def solve_instances(pkl_file='instances.pkl'):
                 w_sp, _ = branch_and_bound(
                     sp_obj, sp_lb, sp_ub,
                     box_low, box_high,
-                    tolerance=0.05,
+                    tolerance=0.03,
                     min_box_size=0.01,
-                    num_workers=8
+                    num_workers=num_workers
                 )
                 inst['time_sp_bnb'] = time.time() - start_time
                 inst['sp_bnb'] = model.SP(w_sp, solver='gurobi')[0]
@@ -118,6 +121,9 @@ def solve_instances(pkl_file='instances.pkl'):
                 inst['time_sp_bnb'] = None
                 inst['sp_bnb'] = None
                 print(f"Error in SP BnB: {e}")
+        else:
+            print(f"SP BnB solution already exists for instance {inst['instance_id']}")
+            success_count_sp += 1
 
         ########################################
         #### Solve RSP via branch-and-bound ####
@@ -132,9 +138,9 @@ def solve_instances(pkl_file='instances.pkl'):
                 w_rsp, _ = branch_and_bound(
                     rsp_obj, rsp_lb, rsp_ub,
                     box_low, box_high,
-                    tolerance=0.05,
+                    tolerance=0.03,
                     min_box_size=0.01,
-                    num_workers=8
+                    num_workers=num_workers
                 )
                 inst['time_rsp_bnb'] = time.time() - start_time
                 inst['rsp_bnb'] = model.SP(w_rsp, solver='gurobi')[0]
@@ -144,23 +150,94 @@ def solve_instances(pkl_file='instances.pkl'):
                 inst['time_rsp_bnb'] = None
                 inst['rsp_bnb'] = None
                 inst['error'] = str(e)
+
+        else:
+            print(f"RSP BnB solution already exists for instance {inst['instance_id']}")
+            success_count_rsp += 1
         
     success_rate_sp = success_count_sp / len(instances)
     success_rate_rsp = success_count_rsp / len(instances)
     print(f"Success rate SP: {success_rate_sp:.2%}, Success rate RSP: {success_rate_rsp:.2%}")
     
     # Save updated instances
-    with open(pkl_file, 'wb') as f:
+    with open(output_file, 'wb') as f:
         pickle.dump(instances, f)
-    print(f"\nUpdated instances saved to {pkl_file}")
+    print(f"\nUpdated instances saved to {output_file}")
+
+def solve_brute_force(input_file='instances.pkl', output_file='instances.pkl', n_samples=10000, num_workers=8):
+    """Solve instances using brute force and calculate optimality gaps
+    
+    Args:
+        pkl_file: Name of pickle file containing instances
+        n_samples: Number of samples for MPAssortOriginal
+        num_cores: Number of cores for parallel computation
+    """
+    # Load instances
+    with open(input_file, 'rb') as f:
+        instances = pickle.load(f)
+    
+    print(f"Solving {len(instances)} instances with brute force...")
+    for idx, inst in enumerate(tqdm(instances)):
+        try:
+            # Create solver instances
+            if inst['distr'] == "GumBel":
+                distr = GumBel()
+            else:
+                raise ValueError(f"Unsupported distribution: {inst['distr']}")
+                
+            # Create original problem solver
+            op = MPAssortOriginal(inst['u'], inst['r'], inst['B'], distr, inst['C'])
+
+            op_obj = OP_obj(op, distr.random_sample((n_samples, inst['N']+1)))
+            
+            # Solve with brute force
+            bf_optimizer = BruteForceOptimizer(N=inst['N'], C=inst['C'], num_cores=num_workers)
+            
+            start_time = time.time()
+            x_op, val_op = bf_optimizer.maximize(op_obj)
+            inst['time_bf'] = time.time() - start_time
+            inst['x_bf'] = x_op
+            
+            # Calculate optimality gaps if SP and RSP solutions exist
+            if 'sp_bnb' in inst and inst['sp_bnb'] is not None:
+                inst['gap_sp'] = (val_op - op_obj(inst['sp_bnb'])) / val_op
+            else:
+                inst['gap_sp'] = None
+                
+            if 'rsp_bnb' in inst and inst['rsp_bnb'] is not None:
+                inst['gap_rsp'] = (val_op - op_obj(inst['rsp_bnb'])) / val_op
+            else:
+                inst['gap_rsp'] = None
+            
+        except Exception as e:
+            inst['time_bf'] = None
+            inst['x_bf'] = None
+            inst['gap_sp'] = None
+            inst['gap_rsp'] = None
+            print(f"Error in brute force: {e}")
+    
+    # Save updated instances
+    with open(output_file, 'wb') as f:
+        pickle.dump(instances, f)
+    print(f"\nUpdated instances saved to {output_file}")
 
 if __name__ == "__main__":
 
+    # check gurobi home and license
+    gurobi_home = os.getenv("GUROBI_HOME")
+    license_file = os.getenv("GRB_LICENSE_FILE")
+    print(f"Gurobi home: {gurobi_home}")
+    print(f"License path: {license_file}")
+
     # Generate and save instances
-    if False:
-        instances = generate_instances(N=15, C=(8,8), distr="GumBel", random_seed=2025, n_instances=3)
-        save_instances(instances, file_name='instances.pkl')
+    if True:
+        instances = generate_instances(N=15, C=(8,8), distr="GumBel", random_seed=2025, n_instances=2)
+        save_instances(instances, file_name='instances_0.pkl')
     
     # Solve instances
     if True:
-        solve_instances(pkl_file='instances.pkl')
+        solve_instances(input_file='instances_0.pkl', output_file='instances_1.pkl', num_workers=8)
+    
+    # Solve with brute force and calculate gaps
+    if True:
+        solve_brute_force(input_file='instances_1.pkl', output_file='instances_2.pkl', n_samples=10000, num_workers=8)

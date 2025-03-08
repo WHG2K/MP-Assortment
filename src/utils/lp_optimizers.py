@@ -1,11 +1,11 @@
 import numpy as np
-import os
+# import os
 from typing import Tuple, Optional
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum, LpStatus, PULP_CBC_CMD
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# # Load environment variables
+# load_dotenv()
 
 class LinearProgramSolver:
     """A solver class for linear programs with variables in [0,1]"""
@@ -26,11 +26,12 @@ class LinearProgramSolver:
                 from gurobipy import GRB
                 self.gp = gp
                 self.GRB = GRB
-                self.gurobi_license = os.getenv('GUROBI_LICENSE_PATH')
-                if self.gurobi_license is None:
-                    raise ValueError("GUROBI_LICENSE_PATH not found in environment variables")
-            except ImportError:
-                raise ImportError("Gurobi is not available. Please install gurobipy.")
+                # self.gurobi_license = os.getenv('GUROBI_LICENSE_PATH')
+                # if self.gurobi_license is None:
+                #     raise ValueError("GUROBI_LICENSE_PATH not found in environment variables")
+            except Exception as e:
+                print(f"Error: {e}")
+                # raise ImportError("Gurobi is not available. Please install gurobipy.")
     
     def maximize(self, 
                 c: np.ndarray,
@@ -82,7 +83,7 @@ class LinearProgramSolver:
     def _solve_gurobi(self, c: np.ndarray, A: Optional[np.ndarray], b: Optional[np.ndarray]) -> Tuple[float, np.ndarray, str]:
         """Solve using Gurobi"""
         N = len(c)
-        os.environ['GRB_LICENSE_FILE'] = self.gurobi_license
+        # os.environ['GRB_LICENSE_FILE'] = self.gurobi_license
         
         with self.gp.Env(empty=True) as env:
             env.setParam('OutputFlag', 0)
