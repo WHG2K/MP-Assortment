@@ -17,9 +17,11 @@ def load_instances(file_name='instances.pkl'):
 
 if __name__ == "__main__":
     # Load instances
-    instances = load_instances("instances_1.pkl")
+    instances = load_instances("data.pkl")
 
     # df = pd.DataFrame(instances)
     # print(df)
     for row in instances:
-        print(row)
+        # print(row)
+        for key, value in row.items():
+            print(key, value)

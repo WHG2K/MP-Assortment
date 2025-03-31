@@ -6,6 +6,7 @@ from src.utils.lp_optimizers import LinearProgramSolver
 # from scipy.integrate import quad_vec
 import time
 
+
 class MPAssortSurrogate:
     """Multi-Purchase Assortment Optimization Surrogate Algorithm
     
@@ -55,24 +56,29 @@ class MPAssortSurrogate:
         assert len(self.u) == len(self.r), "lengths of u and r must be equal"
         
         # Validate and store B parameter
-        if isinstance(B, int):
-            if B <= 0:
-                raise ValueError("B as single value must be a positive integer")
-            self.B = {B: 1.0}  # Convert to distribution with probability 1
-        elif isinstance(B, dict):
-            # Validate the distribution
-            if not B:
-                raise ValueError("B as distribution cannot be empty")
-            if not all(isinstance(k, int) and k >= 0 for k in B.keys()):
-                raise ValueError("B distribution keys must be non-negative integers")
-            if not all(isinstance(p, (int, float)) and p >= 0 for p in B.values()):
-                raise ValueError("B distribution probabilities must be non-negative")
-            total_prob = sum(B.values())
-            if not np.isclose(total_prob, 1.0):
-                raise ValueError(f"B distribution probabilities must sum to 1, got {total_prob}")
+        if isinstance(B, dict):
             self.B = B
         else:
-            raise ValueError("B must be either an integer or a dictionary distribution")
+            self.B = {B: 1.0}
+
+        # if isinstance(B, int):
+        #     if B <= 0:
+        #         raise ValueError("B as single value must be a positive integer")
+        #     self.B = {B: 1.0}  # Convert to distribution with probability 1
+        # elif isinstance(B, dict):
+        #     # Validate the distribution
+        #     if not B:
+        #         raise ValueError("B as distribution cannot be empty")
+        #     if not all(isinstance(k, int) and k >= 0 for k in B.keys()):
+        #         raise ValueError("B distribution keys must be non-negative integers")
+        #     if not all(isinstance(p, (int, float)) and p >= 0 for p in B.values()):
+        #         raise ValueError("B distribution probabilities must be non-negative")
+        #     total_prob = sum(B.values())
+        #     if not np.isclose(total_prob, 1.0):
+        #         raise ValueError(f"B distribution probabilities must sum to 1, got {total_prob}")
+        #     self.B = B
+        # else:
+        #     raise ValueError("B must be either an integer or a dictionary distribution")
         
         if not isinstance(distr, Distribution):
             raise ValueError("distr must be an instance of Distribution class")
@@ -82,7 +88,7 @@ class MPAssortSurrogate:
         if not isinstance(C, (int, tuple)):
             raise ValueError("C must be an integer or tuple")
         if isinstance(C, int):
-            self.C = (0, C)
+            self.C = (C, C)
         else:
             if len(C) != 2 or C[0] > C[1] or C[0] < 0:
                 raise ValueError("C as tuple must be in (min, max) format with 0 ≤ min ≤ max")
@@ -175,7 +181,7 @@ class MPAssortSurrogate:
             raise ValueError(f"Failed to solve SP: {status}")
         
         # Convert solution to integer array
-        x = np.round(x).astype(int)
+        # x = np.round(x).astype(int)
         
         return x, rsp_w
 
@@ -441,7 +447,7 @@ class MPAssortOriginal:
         if not isinstance(C, (int, tuple)):
             raise ValueError("C must be an integer or tuple")
         if isinstance(C, int):
-            self.C = (0, C)
+            self.C = (C, C)
         else:
             if len(C) != 2 or C[0] > C[1] or C[0] < 0:
                 raise ValueError("C as tuple must be in (min, max) format with 0 ≤ min ≤ max")
@@ -498,4 +504,130 @@ class MPAssortOriginal:
         pi_x_monte_carlo = np.sum(weighted_sum * selected_r[None, :]) / n_samples
         
         return pi_x_monte_carlo
+
+
+
+
+
+class MNL:
+    """Multinomial Logit Model for assortment optimization.
+    
+    Attributes:
+        u: Utility vector
+        v: Revenue vector
+        N: Number of products
+    """
+    def __init__(self, u: np.ndarray, r: np.ndarray):
+        """Initialize MNL model.
+        
+        Args:
+            u: Utility vector
+            v: Revenue vector
+            
+        Raises:
+            ValueError: If utility and revenue vectors have different lengths
+        """
+        u = np.array(u).reshape(-1)
+        r = np.array(r).reshape(-1)
+        if len(u) != len(r):
+            raise ValueError(f"Utility vector (length {len(u)}) and revenue vector (length {len(r)}) must have the same length")
+            
+        self.u = u
+        self.r = r
+        self.N = len(u)
+        
+    def solve(self, C: Union[int, Tuple[int, int]]) -> Tuple[np.ndarray, float]:
+        """Solve the MNL assortment optimization problem with cardinality constraints."""
+        # Import Gurobi here instead of storing it as instance attribute
+        try:
+            import gurobipy as gp
+            from gurobipy import GRB
+        except Exception as e:
+            print(f"Error: {e}")
+            return None, None
+            
+        # Handle cardinality constraint
+        if isinstance(C, int):
+            if C < 0 or C > self.N:
+                raise ValueError(f"C must be between 0 and {self.N}")
+            C = (C, C)  # Convert to tuple format
+        elif isinstance(C, tuple):
+            if len(C) != 2 or C[0] > C[1] or C[0] < 0 or C[1] > self.N:
+                raise ValueError(f"C as tuple must be in (min, max) format with 0 ≤ min ≤ max ≤ {self.N}")
+        else:
+            raise ValueError("C must be an integer or tuple")
+            
+        # construct linear program to solve it
+        N = self.N
+        r = self.r
+        v = np.exp(self.u)
+
+        with gp.Env(empty=True) as env:
+            env.setParam('OutputFlag', 0)
+            env.start()
+            
+            with gp.Model(env=env) as model:
+                w = model.addVars(N+1, lb=0, name="w")
+                
+                # set objective
+                model.setObjective(
+                    gp.quicksum(r[i] * w[i] for i in range(N)),
+                    GRB.MAXIMIZE
+                )
+
+                # probability constraints
+                model.addConstr(
+                    gp.quicksum(w[i] for i in range(N+1)) <= 1
+                )
+                # cardinality constraints
+                model.addConstr(
+                    gp.quicksum(w[i]/v[i] for i in range(N)) >= C[0] * w[N]
+                )
+                model.addConstr(
+                    gp.quicksum(w[i]/v[i] for i in range(N)) <= C[1] * w[N]
+                )
+                # additional constraints
+                for i in range(N):
+                    model.addConstr(
+                        w[i]/v[i] <= w[N]
+                    )
+
+                model.optimize()
+                
+                # Map Gurobi status codes to meaningful strings
+                status_map = {
+                    GRB.OPTIMAL: 'Optimal',
+                    GRB.INFEASIBLE: 'Infeasible',
+                    GRB.INF_OR_UNBD: 'Infeasible or Unbounded',
+                    GRB.UNBOUNDED: 'Unbounded',
+                    GRB.TIME_LIMIT: 'Time Limit Reached',
+                    GRB.NODE_LIMIT: 'Node Limit Reached',
+                    GRB.SOLUTION_LIMIT: 'Solution Limit Reached',
+                    GRB.INTERRUPTED: 'Interrupted',
+                    GRB.NUMERIC: 'Numeric Issues'
+                }
+                
+                status = status_map.get(model.status, f'Other Status: {model.status}')
+                
+                if model.status == GRB.OPTIMAL:
+                    W = np.array([w[i].X for i in range(N)])
+                    x = np.where(W > 1e-8, 1, 0)
+                    obj_val = model.objVal
+                else:
+                    raise ValueError(f"Optimization failed with status: {status}")
+                
+                return x, obj_val
+
+    def __call__(self, x: np.ndarray) -> float:
+        """Calculate the expected revenue of the MNL model.
+        
+        Args:
+            x: Assortment vector
+            
+        Returns:
+            float: Expected revenue
+        """
+        x = np.array(x).reshape(-1)
+        v = np.exp(self.u)
+        return np.sum(self.r * v * x) / (1 + np.sum(v * x))
 
