@@ -4,7 +4,9 @@ import pandas as pd
 if __name__ == "__main__":
 
     # Load pickle file
-    with open('raw_N_20_C_8_8_B_1_2_3_distr_GumBel.pkl', 'rb') as f:
+    # with open(r'results\0402_runtime\raw_N_100_C_12_12_B_1_distr_GumBel_tol_0.01.pkl', 'rb') as f:
+    #     instances = pickle.load(f)
+    with open(r'raw_dec_N_15_C_8_8_B_1_2_distr_GumBel_tol_0.01.pkl', 'rb') as f:
         instances = pickle.load(f)
 
     # # Convert to DataFrame and select columns
@@ -15,4 +17,4 @@ if __name__ == "__main__":
     # df.to_excel('check_sBB_003.xlsx', index=False)
 
     df = pd.DataFrame(instances)
-    print(df)
+    df.to_excel('check_details.xlsx', index=False)

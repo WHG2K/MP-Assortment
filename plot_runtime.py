@@ -2,61 +2,129 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pickle
+import os
 
-# set random seed
-np.random.seed(42)
+def get_runtime_data():
 
-N_values = [10, 20, 40, 60, 100]
-B_values = [1, 2, 3, 4, 6, 8, 10]
-algorithms = ["alg1", "alg2"]
+    # load all pkl files
+    folder_path = r"results\0402_runtime"  # 替换为你的文件夹路径
+    df_list = []
+    for filename in os.listdir(folder_path):
+        if filename.startswith("raw") and filename.endswith(".pkl"):  
+            file_path = os.path.join(folder_path, filename)
 
-data = []
-for B in B_values:
-    for algo in algorithms:
-        for N in N_values:
-            runtimes = np.random.normal(loc=N * (1.2 if algo == "alg1" else 0.5) * (1 + B * 0.02), 
-                                        scale=N * 0.2, size=15)  # 生成不同 B 的 runtime
-            for runtime in runtimes:
-                data.append([algo, B, N, runtime])
+            # load data
+            with open(file_path, 'rb') as f:
+                instances = pickle.load(f)
 
-# create DataFrame
-df = pd.DataFrame(data, columns=["algorithm", "B", "N", "runtime"])
+            # transform
+            df = pd.DataFrame(instances)
+            df["|B|"] = df["B"].apply(len)
+            df_new = pd.melt(df, id_vars=["N", "|B|"], value_vars=["time_exact_sp", "time_exact_rsp"],
+                            var_name="alg", value_name="runtime")
+            df_new["alg"] = df_new["alg"].replace({"time_exact_sp": "SP", "time_exact_rsp": "RSP"})
 
-# print(df)
+            df_list.append(df_new)
+
+    # merge all dataframes
+    df = pd.concat(df_list, axis=0)
+
+    return df
 
 
-# 选择要绘图的 B 值
-B_fixed = 4  # 你可以修改这个值，比如 20
+# def plot_runtime(df):
 
-# 过滤 DataFrame
-df_filtered = df[df["B"] == B_fixed]
+#     folder_path = r"results\0402_runtime"
+#     os.makedirs(folder_path + r"\runtime_plots", exist_ok=True)
+#     updated_folder_path = folder_path + r"\runtime_plots"
 
-# 画图
-plt.figure(figsize=(8,6))
+#     for B_fixed in df["|B|"].unique():
 
-# sns.lineplot(
-#     x="N", y="runtime", hue="algorithm", style="B", data=df_filtered, 
-#     marker="o", linewidth=2, errorbar=('ci', 95)  # Q1-Q3 作为误差范围
-# )
+#         # filter dataframe
+#         df_filtered = df[df["|B|"] == B_fixed]
 
-sns.lineplot(
-    x="N", y="runtime", hue="algorithm", data=df_filtered, 
-    marker="o", linewidth=2, errorbar=('ci', 95)  # Q1-Q3 作为误差范围
-)
+#         # plot
+#         plt.figure(figsize=(8,6))
+#         sns.lineplot(
+#             x="N", y="runtime", hue="alg", data=df_filtered, 
+#             marker="o", linewidth=2, errorbar=('ci', 95)  # Q1-Q3 作为误差范围
+#         )
+#         plt.xlabel("N")
+#         plt.ylabel("Runtime (s)")
+#         # plt.title("Runtime vs. N for Different B Values with Q1-Q3")
+#         # plt.legend(title="Algorithm")
+#         plt.legend()
 
-plt.xlabel("N")
-plt.ylabel("Runtime")
-plt.title("Runtime vs. N for Different B Values with Q1-Q3")
-plt.legend(title="Algorithm")
+#         # decorate
+#         plt.xticks(fontsize=12)
+#         plt.yticks(fontsize=12)
+#         plt.tight_layout()
 
-# 设置更适合论文的字体和格式
-plt.xticks(fontsize=12)
-plt.yticks(fontsize=12)
+#         # save
+#         plt.savefig(updated_folder_path + "\\" + f"runtime_Bsize_{B_fixed}.pdf", format="pdf", dpi=300)
 
-# 增加合适的边距
-plt.tight_layout()
+#         # plt.show()
 
-# 保存为 PDF，设置 DPI 为 300
-plt.savefig("runtime_vs_N_B_10.pdf", format="pdf", dpi=300)
 
-plt.show()
+def plot_runtime_boxplots(df):
+
+    folder_path = r"results\0402_runtime"
+    os.makedirs(folder_path + r"\runtime_boxplots", exist_ok=True)
+    updated_folder_path = folder_path + r"\runtime_boxplots"
+
+    for B_fixed in sorted(df["|B|"].unique()):
+
+        palette = {"SP": "#1f77b4", "RSP": "#ff7f0e"}
+
+        # filter dataframe
+        df_filtered = df[df["|B|"] == B_fixed]
+
+        plt.figure(figsize=(10, 6))
+
+        # 画 boxplot，按照算法分颜色，并排显示
+        sns.boxplot(
+            x="N", y="runtime", hue="alg", data=df_filtered,
+            showfliers=False, dodge=True, palette=palette, width=0.6
+        )
+
+        # # 添加中位数连接线
+        # for alg in df_filtered["alg"].unique():
+        #     medians = df_filtered[df_filtered["alg"] == alg].groupby("N")["runtime"].median().reset_index()
+        #     plt.plot(medians["N"], medians["runtime"], marker="o", label=f"{alg} median", color=palette[alg])
+
+        # # 遍历算法
+        # for alg in df_filtered["alg"].unique():
+        #     df_alg = df_filtered[df_filtered["alg"] == alg]
+
+        #     # 绘制 boxplot
+        #     sns.boxplot(
+        #         x="N", y="runtime", data=df_alg, 
+        #         color="lightgray",  # 所有算法用灰色底（也可以改成 palette）
+        #         fliersize=3, width=0.5,
+        #         showfliers=False
+        #     )
+
+            # # 算每个 N 下的中位数
+            # medians = df_alg.groupby("N")["runtime"].median().reset_index()
+
+            # # 画趋势线
+            # plt.plot(medians["N"], medians["runtime"], marker="o", label=alg)
+
+        plt.xlabel("N")
+        plt.ylabel("Runtime (s)")
+        # plt.title(f"Runtime vs. N (|B| = {B_fixed})")
+        plt.legend()
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+
+        # save
+        plt.savefig(updated_folder_path + "\\" + f"runtime_Bsize_{B_fixed}_boxplot.pdf", format="pdf", dpi=300)
+
+
+
+if __name__ == "__main__":
+
+    df = get_runtime_data()
+    plot_runtime_boxplots(df)

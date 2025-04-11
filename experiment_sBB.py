@@ -29,13 +29,14 @@ def parse_arguments():
     parser.add_argument('--tol_exact', type=float, default=0.01, help='Tolerance for exact SP/RSP solution')
     parser.add_argument('--tol_clustered', type=float, default=0.01, help='Tolerance for clustered SP/RSP solution')
     parser.add_argument('--node', type=str, default=None, help='which node to run on')
-    parser.add_argument('--ignore_brute_force', type=bool, default=True, help='whether to ignore brute force')
+    parser.add_argument("--brute_force", action="store_true", help="Use brute force search")
+    parser.add_argument("--randomness", type=str, default='rand', help='randomness of basket sizes')
 
     return parser.parse_args()
 
 
 
-def generate_instances(N=15, C=(8,8), B=[1,2,3], distr="GumBel", random_seed=2025, n_instances=100):
+def generate_instances(N=15, C=(8,8), B=[1,2,3], randomness='rand', distr="GumBel", random_seed=2025, n_instances=100):
     """Generate multiple problem instances
 
     Args:
@@ -63,6 +64,12 @@ def generate_instances(N=15, C=(8,8), B=[1,2,3], distr="GumBel", random_seed=202
         # Generate basket size distribution
         basket_sizes = B
         probs = np.random.uniform(0, 1, len(basket_sizes))
+        if randomness == 'rand':
+            pass
+        elif randomness == 'dec':
+            probs = np.sort(probs)[::-1]
+        else:
+            raise ValueError(f"Unsupported randomness: {randomness}")
         probs = probs / probs.sum()
         probs = probs.flatten().tolist()
         B = dict(zip(basket_sizes, probs))
@@ -72,6 +79,7 @@ def generate_instances(N=15, C=(8,8), B=[1,2,3], distr="GumBel", random_seed=202
             'instance_id': i,
             'N': N,
             'C': C,
+            'randomness': randomness,
             'distr': distr,
             'u': u,
             'r': r,
@@ -353,7 +361,7 @@ def solve_clustered_rsp(input_file, output_file, tolerance=0.05):
 
 
 
-def solve_brute_force_and_greedy(input_file, output_file, ignore_brute_force=False, eval_list=[], n_samples=10000, num_workers=8):
+def solve_brute_force_and_greedy(input_file, output_file, brute_force=True, eval_list=[], n_samples=10000, num_workers=8):
     """Solve instances using brute force and calculate optimality gaps
     Args:
         pkl_file: Name of pickle file containing instances
@@ -386,7 +394,7 @@ def solve_brute_force_and_greedy(input_file, output_file, ignore_brute_force=Fal
             inst['x_gr'] = np.array(x_gr).flatten().tolist()
 
             # Solve with brute force
-            if not ignore_brute_force:
+            if brute_force:
                 bf_optimizer = BruteForceOptimizer(N=inst['N'], C=inst['C'], num_cores=num_workers)
                 start_time = time.time()
                 x_op, val_op = bf_optimizer.maximize(op_obj)
@@ -405,7 +413,7 @@ def solve_brute_force_and_greedy(input_file, output_file, ignore_brute_force=Fal
                     inst[obj_name] = None
 
         except Exception as e:
-            if not ignore_brute_force:
+            if brute_force:
                 inst['time_op'] = None
                 inst['x_op'] = None
                 inst['pi_x_op'] = None
@@ -489,10 +497,11 @@ if __name__ == "__main__":
     B = args.B
     n_instances = args.n_instances
     distr = "GumBel"
+    randomness = args.randomness
     random_seed = 2025
 
     B_str = '_'.join(map(str, B))
-    file_name = f'raw_N_{N}_C_{C[0]}_{C[1]}_B_{B_str}_distr_{distr}_tol_{args.tol_exact}.pkl'
+    file_name = f'raw_{randomness}_N_{N}_C_{C[0]}_{C[1]}_B_{B_str}_distr_{distr}_tol_{args.tol_exact}.pkl'
 
     # Generate and save instances
     if True:
@@ -500,6 +509,7 @@ if __name__ == "__main__":
             N=N,
             C=C,
             B=B,
+            randomness=randomness,
             distr=distr,
             random_seed=random_seed,
             n_instances=n_instances
@@ -531,7 +541,7 @@ if __name__ == "__main__":
         solve_brute_force_and_greedy(
             input_file=file_name,
             output_file=file_name,
-            ignore_brute_force=args.ignore_brute_force,
+            brute_force=args.brute_force,
             eval_list=['x_exact_sp', 'x_exact_rsp', 'x_clustered_sp', 'x_clustered_rsp', 'x_mnl', 'x_gr'],
             n_samples=10000,
             num_workers=24
