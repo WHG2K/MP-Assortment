@@ -132,9 +132,13 @@ class RSP_lb:
     
 
 class OP_obj:
-    def __init__(self, model, random_comps):
+    def __init__(self, model, random_comps=None):
+        # only add random_comps if you want to use Monte Carlo sampling
         self.model = model
         self.random_comps = random_comps
 
     def __call__(self, x):
-        return self.model._pi_monte_carlo(x, random_comps=self.random_comps)
+        if self.random_comps is None:
+            return self.model._pi(x)
+        else:
+            return self.model._pi_monte_carlo(x, random_comps=self.random_comps)

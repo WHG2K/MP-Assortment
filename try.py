@@ -1,50 +1,104 @@
+import argparse
+import numpy as np
+# from scipy.special import softmax
+from src.utils.distributions import GumBel
+import pickle
+from tqdm import tqdm
+import time
+from src.algorithms.models import MPAssortSurrogate, MPAssortOriginal
+from src.algorithms.sBB import spatial_branch_and_bound_maximize
+from src.utils.brute_force import BruteForceOptimizer
+from src.utils.greedy import GreedyOptimizer
+from src.algorithms.models import MNL
+from src.algorithms.sBB_functions_utils import RSP_obj, RSP_ub, RSP_lb, SP_obj, SP_ub, SP_lb, OP_obj
+from dotenv import load_dotenv
+import os
+
 import pandas as pd
 
-# 示例结构
-df = pd.DataFrame({
-    'N': [10, 10, 20, 20],
-    '|B|': [1, 1, 2, 2],
-    'C': [0.1, 0.1, 0.2, 0.2],
-    'randomness': [0.01, 0.01, 0.02, 0.02],
-    'A': [5, 6, 7, 8],
-    'B': [15, 16, 17, 18],
-    'C_val': [25, 26, 27, 28],  # 避免和 'C' 列名冲突
-})
 
-result = df.groupby(['N', '|B|', 'C', 'randomness']).agg({
-    'A': ['mean', ('p95', lambda x: x.quantile(0.95)), 'max'],
-    'B': ['mean', ('p95', lambda x: x.quantile(0.95)), 'max'],
-    'C_val': ['mean', ('p95', lambda x: x.quantile(0.95)), 'max'],
-})
+if __name__ == "__main__":
+    with open(r'raw_dec_N_60_C_8_8_B_1_2_3_distr_GumBel_tol_0.0001.pkl', 'rb') as f:
+        instances = pickle.load(f)
 
-# # 给 lambda 命名一下列名更清晰
-# result.columns = ['_'.join([col[0], col[1] if isinstance(col[1], str) else 'p95']) for col in result.columns]
-# result = result.reset_index()
-
-# print(result)
+    df = pd.DataFrame(instances)
+    # df.to_excel('check_details.xlsx', index=False)
+    u = df["u"][0]
+    r = df["r"][0]
+    # B = df["B"][0]
+    B = {2: 0.5, 4: 0.5}
+    C = df["C"][0]
+    N = len(u)
+    distr = GumBel()
 
 
-# 假设 df 已经存在
-variables = ['A', 'B', 'C_val']
 
-# 构建聚合字典
-agg_dict = {
-    var: [
-        ('mean', 'mean'),
-        ('p95', lambda x: x.quantile(0.95)),
-        ('max', 'max')
-    ] for var in variables
-}
+    model = MPAssortOriginal(u, r, B, distr, C)
 
-# 聚合计算
-result = df.groupby(['N', '|B|', 'C', 'randomness']).agg(agg_dict)
+    for _ in range(10):
+        x = (np.random.rand(N) < 0.4).astype(int)
+        print(x)
+        print(model._pi(x))
+        print(model._pi_monte_carlo(x, distr.random_sample((10000, N+1))))
 
-# 整理列名（从多层列转为单层列）
-result.columns = [f"{var}_{stat}" for var, stat in result.columns]
-result = result.reset_index()
+    # print(u, r, B, C)
 
-# LaTeX 输出
-# latex_table = result.to_latex(index=False, float_format="%.2f")
-# print(latex_table)
+    # #############################################
+    # ##### 1. solve exact SP
+    # #############################################
 
-print(result)
+    # model = MPAssortSurrogate(u, r, B, distr, C)
+    # w_range = np.array(model._get_box_constraints())
+    # box_low = np.array(w_range[:, 0]).reshape(-1)
+    # box_high = np.array(w_range[:, 1]).reshape(-1)
+
+    # # solve
+    # tolerance = 0.0001
+    # start_time = time.time()
+    # sp_obj = SP_obj(model)
+    # sp_ub = SP_ub(model)
+    # sp_lb = SP_lb(model)
+    # w_sp, _ = spatial_branch_and_bound_maximize(
+    #     sp_obj, sp_lb, sp_ub,
+    #     (box_low, box_high),
+    #     tolerance=tolerance
+    # )
+    # time_exact_sp = time.time() - start_time
+    # x_exact_sp = model.SP(w_sp, solver='gurobi')[0]
+    # x_exact_sp = np.array(x_exact_sp).flatten().tolist()
+
+
+    # #############################################
+    # ##### 2. solve OP
+    # #############################################
+
+    # # Create original problem solver
+    # op = MPAssortOriginal(u, r, B, distr, C)
+    # op_obj = OP_obj(op, distr.random_sample((10000, N+1)))
+
+    # bf_optimizer = BruteForceOptimizer(N, C, num_cores=24)
+    # start_time = time.time()
+    # x_op, val_op = bf_optimizer.maximize(op_obj)
+    # time_op = time.time() - start_time
+    # x_op = np.array(x_op).flatten().tolist()
+
+
+
+    # #############################################
+    # ##### 3. compare op and sp
+    # #############################################
+    # pi_x_op = float(op_obj(x_op))
+    # pi_x_sp = float(op_obj(x_exact_sp))
+
+    # print(pi_x_op, pi_x_sp)
+    # print(model._pi_hat(x_exact_sp), model._pi_hat(x_op))
+
+    # # check range
+    # print("--------------------------------- check range ---------------------------------")
+
+    # print("======= start range =======")
+    # for i in range(len(box_low)):
+    #     print(box_low[i], box_high[i])
+    # print("======= end range =======")
+
+    # print(model._w_x(x_exact_sp), model._w_x(x_op))

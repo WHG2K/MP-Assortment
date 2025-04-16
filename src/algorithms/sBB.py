@@ -137,14 +137,14 @@ def spatial_branch_and_bound_maximize(f, f_lb, f_ub, R, tolerance=0.05):
             L = l
             x_star = x_local
             # Step 5: Pruning
-            regions = [r for r in regions if r["upper_bound"] < L]
+            regions = [r for r in regions if r["upper_bound"] >= L]
 
 
 
         # print(f"iteration {iter:5d}, u: {u:0.4f}, L: {L:0.4f}, N_nodes: {len(regions)}")
 
         # Step 6: Check convergence
-        if u - L <= tolerance * u:
+        if u - L <= tolerance * L:
             # print(f"Converged at {x_star} with value {f(x_star)}")
             return x_star, f(x_star)  # Accept this region's solution
         

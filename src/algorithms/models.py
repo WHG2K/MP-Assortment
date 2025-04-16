@@ -3,6 +3,7 @@ from typing import Union, Tuple, List, Dict
 from src.utils.distributions import Distribution
 from src.utils.bilp_optimizers import BinaryProgramSolver
 from src.utils.lp_optimizers import LinearProgramSolver
+from itertools import combinations
 # from scipy.integrate import quad_vec
 import time
 
@@ -504,6 +505,64 @@ class MPAssortOriginal:
         pi_x_monte_carlo = np.sum(weighted_sum * selected_r[None, :]) / n_samples
         
         return pi_x_monte_carlo
+
+
+    def Get_Choice_Prob_MP_MNL(self, S, i):
+        # get the parameters from model
+        B = self.B
+        m = max(B.keys())
+        lambda_ = [0.0] * (m + 1)  # index 0 unused, just set to 0.0
+        for k in range(1, m + 1):
+            lambda_[k] = B.get(k, 0.0)
+        weights = np.exp(self.u).reshape(-1).tolist()
+        
+        w_i = weights[i]
+        D_choice_prob = {}
+        size_S = len(S)
+        for j in range(1,min(size_S,m)+1):
+            D_choice_prob[j] = {}
+            for k in range(j,min(size_S,m)+1):
+                left_overs = [c for c in list(combinations(S,size_S-(min(size_S,m)-k))) if i in c]
+                if j==1:
+                    for assort in left_overs:
+                        total_weight = 1+sum(weights[prod] for prod in assort)
+                        D_choice_prob[j][assort] = w_i/total_weight
+                else:
+                    for assort in left_overs:
+                        total_weight = 1+sum(weights[prod] for prod in assort)
+                        next_m = 0
+                        for prod in assort:
+                            nc_prob = weights[prod]/total_weight
+                            if prod!=i:
+                                new_assort = tuple([nc for nc in assort if nc!=prod])
+                                next_m+=(nc_prob*D_choice_prob[j-1][new_assort])
+                                
+                        D_choice_prob[j][assort] = w_i/total_weight + next_m
+        
+                        
+        choice_prob = D_choice_prob[min(size_S,m)][tuple(S)]*sum(lambda_[min(size_S,m):])
+        for j in range(1,min(size_S,m)):
+            choice_prob+=(lambda_[j]*D_choice_prob[j][tuple(S)])
+                
+        return choice_prob
+
+
+    def _pi(self, x):
+        # get the parameters from model
+        B = self.B
+        m = max(B.keys())
+        lambda_ = [0.0] * (m + 1)  # index 0 unused, just set to 0.0
+        for k in range(1, m + 1):
+            lambda_[k] = B.get(k, 0.0)
+        weights = np.exp(self.u).reshape(-1).tolist()
+        S = [i for i, val in enumerate(x) if val > 0.99]
+        prices = self.r
+        
+        total_rev =0
+        for i in S:
+            choice_prob = self.Get_Choice_Prob_MP_MNL(S,i)
+            total_rev+=(prices[i]*choice_prob)
+        return total_rev
 
 
 

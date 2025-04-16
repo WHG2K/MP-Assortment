@@ -16,6 +16,7 @@ def get_accuracy_data(brute_force=False):
     folder_path = r"results\0410_accuracy"  # 替换为你的文件夹路径
     df_list = []
     for filename in os.listdir(folder_path):
+        print(filename)
         if filename.startswith("raw") and filename.endswith(".pkl"):  
             file_path = os.path.join(folder_path, filename)
 
@@ -25,6 +26,7 @@ def get_accuracy_data(brute_force=False):
 
             # transform
             df = pd.DataFrame(instances)
+            print(df.columns)
             df["|B|"] = df["B"].apply(len)
             df["C"] = df["C"].apply(simplify_tuple)
             # df_new = pd.melt(df, id_vars=["N", "|B|"], value_vars=["time_exact_sp", "time_exact_rsp"],
@@ -94,7 +96,7 @@ def table_accuracy_relative(df, variables=["sp2mnl", "rsp2mnl", "sp2gr", "rsp2gr
     df["rsp2mnl"] = df["pi_x_exact_rsp"] / df["pi_x_mnl"] - 1
     df["sp2gr"] = df["pi_x_exact_sp"] / df["pi_x_gr"] - 1
     df["rsp2gr"] = df["pi_x_exact_rsp"] / df["pi_x_gr"] - 1
-    
+
     # 聚合计算
     result = df.groupby(['N', '|B|', 'C', 'randomness']).agg(agg_dict)
 
@@ -117,7 +119,8 @@ def table_accuracy_relative(df, variables=["sp2mnl", "rsp2mnl", "sp2gr", "rsp2gr
 
 if __name__ == "__main__":
 
-    df = get_accuracy_data()
+    df = get_accuracy_data(brute_force=False)
     # df.to_excel("accuracy_data.xlsx", index=False)
-    result = table_accuracy(df)
+    # result = table_accuracy(df)
+    result = table_accuracy_relative(df)
     # print(result)
