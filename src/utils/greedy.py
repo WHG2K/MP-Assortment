@@ -13,8 +13,7 @@ class GreedyOptimizer:
     
     def __init__(self, 
                  N: int, 
-                 C: Union[int, Tuple[int, int]], 
-                 num_cores: int = 1):
+                 C: Union[int, Tuple[int, int]]):
         """Initialize the optimizer
         
         Args:
@@ -38,8 +37,6 @@ class GreedyOptimizer:
             self.C = C
         else:
             raise ValueError("C must be an integer or tuple")
-            
-        self.num_cores = num_cores 
 
 
     def _one_step_search_list(self, x):

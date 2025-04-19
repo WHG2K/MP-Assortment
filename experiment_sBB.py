@@ -56,10 +56,10 @@ def generate_instances(N=15, C=(8,8), B=[1,2,3], randomness='rand', distr="GumBe
     print("Generating problem instances...")
     for i in tqdm(range(n_instances)):
         # Generate utilities and revenues
-        u = np.random.normal(0, 1, N).flatten().tolist()
+        u = np.random.normal(0, 1, N).reshape(-1).tolist()
         w = np.exp(u)
         w_max = np.max(w)
-        r = (w_max - w).flatten().tolist()
+        r = (w_max - w).reshape(-1).tolist()
 
         # Generate basket size distribution
         basket_sizes = B
@@ -71,7 +71,7 @@ def generate_instances(N=15, C=(8,8), B=[1,2,3], randomness='rand', distr="GumBe
         else:
             raise ValueError(f"Unsupported randomness: {randomness}")
         probs = probs / probs.sum()
-        probs = probs.flatten().tolist()
+        probs = probs.reshape(-1).tolist()
         B = dict(zip(basket_sizes, probs))
 
         # Store instance data
@@ -139,7 +139,7 @@ def solve_exact_sp(input_file, output_file, tolerance=0.05):
                 )
                 inst['time_exact_sp'] = time.time() - start_time
                 x_exact_sp = model.SP(w_sp, solver='gurobi')[0]
-                inst['x_exact_sp'] = np.array(x_exact_sp).flatten().tolist()
+                inst['x_exact_sp'] = np.array(x_exact_sp).reshape(-1).tolist()
                 success_count_sp += 1
 
             except Exception as e:
@@ -201,7 +201,7 @@ def solve_exact_rsp(input_file, output_file, tolerance=0.05):
                 )
                 inst['time_exact_rsp'] = time.time() - start_time
                 x_exact_rsp = model.SP(w_rsp, solver='gurobi')[0]
-                inst['x_exact_rsp'] = np.array(x_exact_rsp).flatten().tolist()
+                inst['x_exact_rsp'] = np.array(x_exact_rsp).reshape(-1).tolist()
                 success_count_rsp += 1
 
             except Exception as e:
@@ -270,7 +270,7 @@ def solve_clustered_sp(input_file, output_file, tolerance=0.05):
                 )
                 inst['time_clustered_sp'] = time.time() - start_time
                 x_clustered_sp = model.SP(w_sp, solver='gurobi')[0]
-                inst['x_clustered_sp'] = np.array(x_clustered_sp).flatten().tolist()
+                inst['x_clustered_sp'] = np.array(x_clustered_sp).reshape(-1).tolist()
                 success_count_sp += 1
 
             except Exception as e:
@@ -336,7 +336,7 @@ def solve_clustered_rsp(input_file, output_file, tolerance=0.05):
                 )
                 inst['time_clustered_rsp'] = time.time() - start_time
                 x_clustered_rsp = model.SP(w_rsp, solver='gurobi')[0]
-                inst['x_clustered_rsp'] = np.array(x_clustered_rsp).flatten().tolist()
+                inst['x_clustered_rsp'] = np.array(x_clustered_rsp).reshape(-1).tolist()
                 success_count_rsp += 1
 
             except Exception as e:
@@ -383,15 +383,15 @@ def solve_brute_force_and_greedy(input_file, output_file, brute_force=True, eval
 
             # Create original problem solver
             op = MPAssortOriginal(inst['u'], inst['r'], inst['B'], distr, inst['C'])
-
-            op_obj = OP_obj(op, distr.random_sample((n_samples, inst['N']+1)))
+            # random_comps = distr.random_sample((n_samples, inst['N']+1))
+            op_obj = OP_obj(op)
 
             # Solve with greedy
             greedy_optimizer = GreedyOptimizer(N=inst['N'], C=inst['C'], num_cores=num_workers)
             start_time = time.time()
             x_gr, _ = greedy_optimizer.maximize(op_obj)
             inst['time_gr'] = time.time() - start_time
-            inst['x_gr'] = np.array(x_gr).flatten().tolist()
+            inst['x_gr'] = np.array(x_gr).reshape(-1).tolist()
 
             # Solve with brute force
             if brute_force:
@@ -399,9 +399,13 @@ def solve_brute_force_and_greedy(input_file, output_file, brute_force=True, eval
                 start_time = time.time()
                 x_op, val_op = bf_optimizer.maximize(op_obj)
                 inst['time_op'] = time.time() - start_time
-                inst['x_op'] = np.array(x_op).flatten().tolist()
+                inst['x_op'] = np.array(x_op).reshape(-1).tolist()
                 # inst['pi_x_op'] = op_obj(inst['x_op'])
                 inst['pi_x_op'] = float(op_obj(inst['x_op']))
+            else:
+                inst['time_op'] = None
+                inst['x_op'] = None
+                inst['pi_x_op'] = None
 
             # Calculate OP revenues for the evaluation list
             for x_name in eval_list:
@@ -453,7 +457,7 @@ def solve_mnl(input_file, output_file):
                 start_time = time.time()
                 x_mnl, _ = mnl.solve(inst['C'])
                 inst['time_mnl'] = time.time() - start_time
-                inst['x_mnl'] = np.array(x_mnl).flatten().tolist()
+                inst['x_mnl'] = np.array(x_mnl).reshape(-1).tolist()
                 success_count_mnl += 1
 
             else:
@@ -501,7 +505,7 @@ if __name__ == "__main__":
     random_seed = 2025
 
     B_str = '_'.join(map(str, B))
-    file_name = f'raw_{randomness}_N_{N}_C_{C[0]}_{C[1]}_B_{B_str}_distr_{distr}_tol_{args.tol_exact}.pkl'
+    file_name = f'raw_{randomness}_N_{N}_C_{C[0]}_{C[1]}_B_{B_str}_distr_{distr}_tol_{args.tol_exact}_close_form.pkl'
 
     # Generate and save instances
     if True:

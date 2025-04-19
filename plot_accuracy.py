@@ -13,7 +13,7 @@ def simplify_tuple(t):
 def get_accuracy_data(brute_force=False):
 
     # load all pkl files
-    folder_path = r"results\0410_accuracy"  # 替换为你的文件夹路径
+    folder_path = r"results\0410_accuracy\scale_B\tol_0.0001"
     df_list = []
     for filename in os.listdir(folder_path):
         print(filename)
@@ -26,16 +26,17 @@ def get_accuracy_data(brute_force=False):
 
             # transform
             df = pd.DataFrame(instances)
-            print(df.columns)
-            df["|B|"] = df["B"].apply(len)
+            # print(df.columns)
+            # df["|B|"] = df["B"].apply(len)
+            df["B"] = df["B"].apply(lambda d: tuple(sorted(d.keys())))
             df["C"] = df["C"].apply(simplify_tuple)
             # df_new = pd.melt(df, id_vars=["N", "|B|"], value_vars=["time_exact_sp", "time_exact_rsp"],
             #                 var_name="alg", value_name="runtime")
             # df_new["alg"] = df_new["alg"].replace({"time_exact_sp": "SP", "time_exact_rsp": "RSP"})
             if brute_force:
-                df_list.append(df[["N", "C", "|B|", "randomness", "pi_x_op", "pi_x_exact_sp", "pi_x_exact_rsp", "pi_x_clustered_sp", "pi_x_clustered_rsp", "pi_x_mnl", "pi_x_gr"]])
+                df_list.append(df[["N", "C", "B", "randomness", "pi_x_op", "pi_x_exact_sp", "pi_x_exact_rsp", "pi_x_clustered_sp", "pi_x_clustered_rsp", "pi_x_mnl", "pi_x_gr"]])
             else:
-                df_list.append(df[["N", "C", "|B|", "randomness", "pi_x_exact_sp", "pi_x_exact_rsp", "pi_x_clustered_sp", "pi_x_clustered_rsp", "pi_x_mnl", "pi_x_gr"]])
+                df_list.append(df[["N", "C", "B", "randomness", "pi_x_exact_sp", "pi_x_exact_rsp", "pi_x_clustered_sp", "pi_x_clustered_rsp", "pi_x_mnl", "pi_x_gr"]])
 
     # merge all dataframes
     df = pd.concat(df_list, axis=0)
@@ -68,7 +69,7 @@ def table_accuracy(df, variables=["gap_sp", "gap_rsp", "gap_mnl", "gap_gr"]):
     # result.columns = [f"{var}_{stat}" for var, stat in result.columns]
     new_columns = [(var, stat) for stat in stats_order for var in variables]
     result = result[new_columns]
-    print(result.columns)
+    # print(result.columns)
     result = result.reset_index()
 
     for _, row in result.iterrows():
@@ -98,7 +99,8 @@ def table_accuracy_relative(df, variables=["sp2mnl", "rsp2mnl", "sp2gr", "rsp2gr
     df["rsp2gr"] = df["pi_x_exact_rsp"] / df["pi_x_gr"] - 1
 
     # 聚合计算
-    result = df.groupby(['N', '|B|', 'C', 'randomness']).agg(agg_dict)
+    # result = df.groupby(['N', '|B|', 'C', 'randomness']).agg(agg_dict)
+    result = df.groupby(['N', 'B', 'C', 'randomness']).agg(agg_dict)
 
     stats_order = ['mean', 'p95', 'max']
 
@@ -106,7 +108,7 @@ def table_accuracy_relative(df, variables=["sp2mnl", "rsp2mnl", "sp2gr", "rsp2gr
     # result.columns = [f"{var}_{stat}" for var, stat in result.columns]
     new_columns = [(var, stat) for stat in stats_order for var in variables]
     result = result[new_columns]
-    print(result.columns)
+    # print(result.columns)
     result = result.reset_index()
 
     for _, row in result.iterrows():
@@ -124,3 +126,4 @@ if __name__ == "__main__":
     # result = table_accuracy(df)
     result = table_accuracy_relative(df)
     # print(result)
+    # print(df.head())

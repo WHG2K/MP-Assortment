@@ -1,104 +1,77 @@
-import argparse
-import numpy as np
-# from scipy.special import softmax
-from src.utils.distributions import GumBel
-import pickle
-from tqdm import tqdm
-import time
 from src.algorithms.models import MPAssortSurrogate, MPAssortOriginal
-from src.algorithms.sBB import spatial_branch_and_bound_maximize
 from src.utils.brute_force import BruteForceOptimizer
-from src.utils.greedy import GreedyOptimizer
-from src.algorithms.models import MNL
+import numpy as np
+from src.utils.distributions import GumBel
 from src.algorithms.sBB_functions_utils import RSP_obj, RSP_ub, RSP_lb, SP_obj, SP_ub, SP_lb, OP_obj
 from dotenv import load_dotenv
+from src.ptas.PTAS import AO_Instance, MP_MNL_PTAS
 import os
-
-import pandas as pd
 
 
 if __name__ == "__main__":
-    with open(r'raw_dec_N_60_C_8_8_B_1_2_3_distr_GumBel_tol_0.0001.pkl', 'rb') as f:
-        instances = pickle.load(f)
-
-    df = pd.DataFrame(instances)
-    # df.to_excel('check_details.xlsx', index=False)
-    u = df["u"][0]
-    r = df["r"][0]
-    # B = df["B"][0]
-    B = {2: 0.5, 4: 0.5}
-    C = df["C"][0]
-    N = len(u)
-    distr = GumBel()
 
 
+    # np.random.seed(2025)
+    # np.random.seed(0)
 
-    model = MPAssortOriginal(u, r, B, distr, C)
+    load_dotenv(override=True)
 
-    for _ in range(10):
-        x = (np.random.rand(N) < 0.4).astype(int)
-        print(x)
-        print(model._pi(x))
-        print(model._pi_monte_carlo(x, distr.random_sample((10000, N+1))))
+    # check gurobi home and license
+    gurobi_home = os.getenv("GUROBI_HOME")
+    license_file = os.getenv("GRB_LICENSE_FILE")
+    print(f"Gurobi home: {gurobi_home}")
+    print(f"License path: {license_file}")
 
-    # print(u, r, B, C)
+    N = 15
+    u = np.random.normal(0, 1, N).reshape(-1).tolist()
+    w = np.exp(u)
+    w_max = np.max(w)
+    r = (w_max - w).reshape(-1).tolist()
 
-    # #############################################
-    # ##### 1. solve exact SP
-    # #############################################
+    # Generate basket size distribution
+    basket_sizes = [1, 2, 3]
+    probs = np.random.uniform(0, 1, len(basket_sizes))
+    probs = probs / probs.sum()
+    probs = probs.reshape(-1).tolist()
+    B = dict(zip(basket_sizes, probs))
 
-    # model = MPAssortSurrogate(u, r, B, distr, C)
-    # w_range = np.array(model._get_box_constraints())
-    # box_low = np.array(w_range[:, 0]).reshape(-1)
-    # box_high = np.array(w_range[:, 1]).reshape(-1)
+    C = (10, 10)
 
-    # # solve
-    # tolerance = 0.0001
-    # start_time = time.time()
-    # sp_obj = SP_obj(model)
-    # sp_ub = SP_ub(model)
-    # sp_lb = SP_lb(model)
-    # w_sp, _ = spatial_branch_and_bound_maximize(
-    #     sp_obj, sp_lb, sp_ub,
-    #     (box_low, box_high),
-    #     tolerance=tolerance
-    # )
-    # time_exact_sp = time.time() - start_time
-    # x_exact_sp = model.SP(w_sp, solver='gurobi')[0]
-    # x_exact_sp = np.array(x_exact_sp).flatten().tolist()
+    # get parameters for ptas
+    m = max(B.keys())
+    lambda_ = [0.0] * (m + 1)  # index 0 unused, just set to 0.0
+    for k in range(1, m + 1):
+        lambda_[k] = B.get(k, 0.0)
+    weights = np.exp(u).reshape(-1).tolist()
 
+    # PTAS
+    ao_instance = AO_Instance(N, m, lambda_, weights, r, C[0])
+    # OP
+    op = MPAssortOriginal(u, r, B, GumBel(), C)
 
-    # #############################################
-    # ##### 2. solve OP
-    # #############################################
+    # compare revenue function
+    x = np.random.choice([0, 1], size=N, p=[0.4, 0.6])
+    S_x =[i for i, val in enumerate(x) if val > 0.99]
+    print("ptas revenue", ao_instance.Compute_Rev(S_x))
+    print("op revenue", op._pi(x))
 
-    # # Create original problem solver
-    # op = MPAssortOriginal(u, r, B, distr, C)
-    # op_obj = OP_obj(op, distr.random_sample((10000, N+1)))
+    # compare choice probability
+    i = np.random.choice(S_x)
+    print("item", i)
+    print("ptas choice probability", ao_instance.True_Choice_Prob(S_x, i))
+    print("op choice probability", op.Get_Choice_Prob_MP_MNL(S_x, i))
 
-    # bf_optimizer = BruteForceOptimizer(N, C, num_cores=24)
-    # start_time = time.time()
-    # x_op, val_op = bf_optimizer.maximize(op_obj)
-    # time_op = time.time() - start_time
-    # x_op = np.array(x_op).flatten().tolist()
-
+    # compare optimal revenue
+    best_rev_ptas = ao_instance.Get_Opt_Card()
+    op_obj = OP_obj(op)
+    brute_force = BruteForceOptimizer(N, C, num_cores=4)
+    _, best_rev_op = brute_force.maximize(op_obj)
+    print("best rev ptas", best_rev_ptas)
+    print("best rev op", best_rev_op)
 
 
-    # #############################################
-    # ##### 3. compare op and sp
-    # #############################################
-    # pi_x_op = float(op_obj(x_op))
-    # pi_x_sp = float(op_obj(x_exact_sp))
-
-    # print(pi_x_op, pi_x_sp)
-    # print(model._pi_hat(x_exact_sp), model._pi_hat(x_op))
-
-    # # check range
-    # print("--------------------------------- check range ---------------------------------")
-
-    # print("======= start range =======")
-    # for i in range(len(box_low)):
-    #     print(box_low[i], box_high[i])
-    # print("======= end range =======")
-
-    # print(model._w_x(x_exact_sp), model._w_x(x_op))
+    # try ptas
+    ptas_solver = MP_MNL_PTAS(ao_instance)
+    best_rev_ptas = ptas_solver.solve(0.6)
+    print("best rev ptas", best_rev_ptas)
+    print("best assortment ptas", ptas_solver.best_S)
