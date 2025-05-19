@@ -13,7 +13,7 @@ def simplify_tuple(t):
 def get_accuracy_data(brute_force=False):
 
     # load all pkl files
-    folder_path = r"results\0410_accuracy\scale_B\tol_0.0001"
+    folder_path = r"results\0410_accuracy\bai_et_al_setting\N30"
     df_list = []
     for filename in os.listdir(folder_path):
         print(filename)
@@ -34,9 +34,9 @@ def get_accuracy_data(brute_force=False):
             #                 var_name="alg", value_name="runtime")
             # df_new["alg"] = df_new["alg"].replace({"time_exact_sp": "SP", "time_exact_rsp": "RSP"})
             if brute_force:
-                df_list.append(df[["N", "C", "B", "randomness", "pi_x_op", "pi_x_exact_sp", "pi_x_exact_rsp", "pi_x_clustered_sp", "pi_x_clustered_rsp", "pi_x_mnl", "pi_x_gr"]])
+                df_list.append(df[["N", "C", "B", "randomness", "pi_x_opt", "pi_x_sp_0.0001", "pi_x_rsp_0.0001", "pi_x_mnl", "pi_x_gr", "pi_x_ptas_0.6"]])
             else:
-                df_list.append(df[["N", "C", "B", "randomness", "pi_x_exact_sp", "pi_x_exact_rsp", "pi_x_clustered_sp", "pi_x_clustered_rsp", "pi_x_mnl", "pi_x_gr"]])
+                df_list.append(df[["N", "C", "B", "randomness", "pi_x_sp_0.0001", "pi_x_rsp_0.0001", "pi_x_mnl", "pi_x_gr", "pi_x_ptas_0.6"]])
 
     # merge all dataframes
     df = pd.concat(df_list, axis=0)
@@ -44,7 +44,7 @@ def get_accuracy_data(brute_force=False):
     return df
 
 
-def table_accuracy(df, variables=["gap_sp", "gap_rsp", "gap_mnl", "gap_gr"]):
+def table_accuracy(df, variables=["gap_sp", "gap_rsp", "gap_ptas", "gap_mnl", "gap_gr"]):
 
     agg_dict = {
         var: [
@@ -55,15 +55,17 @@ def table_accuracy(df, variables=["gap_sp", "gap_rsp", "gap_mnl", "gap_gr"]):
     }
 
     # calculate gaps
-    df["gap_sp"] = 1 - df["pi_x_exact_sp"] / df["pi_x_op"]
-    df["gap_rsp"] = 1 - df["pi_x_exact_rsp"] / df["pi_x_op"]
-    df["gap_mnl"] = 1 - df["pi_x_mnl"] / df["pi_x_op"]
-    df["gap_gr"] = 1 - df["pi_x_gr"] / df["pi_x_op"]
+    df["gap_sp"] = 1 - df["pi_x_sp_0.0001"] / df["pi_x_opt"]
+    df["gap_rsp"] = 1 - df["pi_x_rsp_0.0001"] / df["pi_x_opt"]
+    df["gap_ptas"] = 1 - df["pi_x_ptas_0.5"] / df["pi_x_opt"]
+    df["gap_mnl"] = 1 - df["pi_x_mnl"] / df["pi_x_opt"]
+    df["gap_gr"] = 1 - df["pi_x_gr"] / df["pi_x_opt"]
 
     # 聚合计算
-    result = df.groupby(['N', '|B|', 'C', 'randomness']).agg(agg_dict)
+    result = df.groupby(['N', 'B', 'C', 'randomness']).agg(agg_dict)
 
-    stats_order = ['mean', 'p95', 'max']
+    # stats_order = ['mean', 'p95', 'max']
+    stats_order = ['mean', 'p95']
 
     # 整理列名（从多层列转为单层列）
     # result.columns = [f"{var}_{stat}" for var, stat in result.columns]
@@ -78,7 +80,7 @@ def table_accuracy(df, variables=["gap_sp", "gap_rsp", "gap_mnl", "gap_gr"]):
 
     return result
 
-def table_accuracy_relative(df, variables=["sp2mnl", "rsp2mnl", "sp2gr", "rsp2gr"]):
+def table_accuracy_relative(df, variables=["sp2mnl", "rsp2mnl", "ptas2mnl", "sp2gr", "rsp2gr", "ptas2gr"]):
 
     agg_dict = {
         var: [
@@ -93,16 +95,19 @@ def table_accuracy_relative(df, variables=["sp2mnl", "rsp2mnl", "sp2gr", "rsp2gr
     # df["gap_rsp"] = 1 - df["pi_x_exact_rsp"] / df["pi_x_op"]
     # df["gap_mnl"] = 1 - df["pi_x_mnl"] / df["pi_x_op"]
     # df["gap_gr"] = 1 - df["pi_x_gr"] / df["pi_x_op"]
-    df["sp2mnl"] = df["pi_x_exact_sp"] / df["pi_x_mnl"] - 1
-    df["rsp2mnl"] = df["pi_x_exact_rsp"] / df["pi_x_mnl"] - 1
-    df["sp2gr"] = df["pi_x_exact_sp"] / df["pi_x_gr"] - 1
-    df["rsp2gr"] = df["pi_x_exact_rsp"] / df["pi_x_gr"] - 1
+    df["sp2mnl"] = df["pi_x_sp_0.0001"] / df["pi_x_mnl"] - 1
+    df["rsp2mnl"] = df["pi_x_rsp_0.0001"] / df["pi_x_mnl"] - 1
+    df["ptas2mnl"] = df["pi_x_ptas_0.6"] / df["pi_x_mnl"] - 1
+    df["sp2gr"] = df["pi_x_sp_0.0001"] / df["pi_x_gr"] - 1
+    df["rsp2gr"] = df["pi_x_rsp_0.0001"] / df["pi_x_gr"] - 1
+    df["ptas2gr"] = df["pi_x_ptas_0.6"] / df["pi_x_gr"] - 1
 
     # 聚合计算
     # result = df.groupby(['N', '|B|', 'C', 'randomness']).agg(agg_dict)
     result = df.groupby(['N', 'B', 'C', 'randomness']).agg(agg_dict)
 
-    stats_order = ['mean', 'p95', 'max']
+    # stats_order = ['mean', 'p95', 'max']
+    stats_order = ['mean', 'p95']
 
     # 整理列名（从多层列转为单层列）
     # result.columns = [f"{var}_{stat}" for var, stat in result.columns]
@@ -123,7 +128,7 @@ if __name__ == "__main__":
 
     df = get_accuracy_data(brute_force=False)
     # df.to_excel("accuracy_data.xlsx", index=False)
-    # result = table_accuracy(df)
-    result = table_accuracy_relative(df)
+    result = table_accuracy(df)
+    # result = table_accuracy_relative(df)
     # print(result)
     # print(df.head())

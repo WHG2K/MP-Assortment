@@ -1,6 +1,7 @@
 import pickle
 import pandas as pd
 import numpy as np
+import os
 
 if __name__ == "__main__":
 
@@ -13,22 +14,30 @@ if __name__ == "__main__":
     # file_name = r'bai_et_al_setting/tol_0.0001/N15_bf/raw_rand_N_15_C_12_12_B_1_2_3_distr_GumBel_tol_0.001_close_form'
     # file_name = r'results\0410_accuracy\scale_B\tol_0.0001\raw_rand_N_15_C_8_12_B_3_distr_GumBel_tol_0.0001_close_form'
     # file_name = r'test\raw_rand_N_15_C_8_12_B_3_distr_GumBel_tol_0.0001_close_form'
-    file_name = r'test\raw_rand_N_60_C_12_20_B_3_distr_GumBel_tol_0.0001_close_form_new'
-    with open(file_name + '.pkl', 'rb') as f:
-        instances = pickle.load(f)
-    
-    # instances = instances.to_dict(orient="records")
-    # print(instances[0])
+    # file_name = r'test\raw_dec_N_15_C_12_12_B_1_2_3_distr_GumBel_tol_0.001_close_form'
+    # folder_path = r"test"
+    folder_path = r"results\0410_accuracy\bai_et_al_setting\N60_KLC"
+    # folder_path = r"results\0410_accuracy\scale_B\tol_0.0001"
+    # folder_path = r"results\0410_accuracy\scale_B\tol_0.0001\N15_bf"
+    for filename in os.listdir(folder_path):
+        print(filename)  
+        if filename.startswith("raw") and filename.endswith(".pkl"):  
+            file_path = os.path.join(folder_path, filename)
+            with open(file_path, 'rb') as f:
+                instances = pickle.load(f)
+            
+            # instances = instances.to_dict(orient="records")
+            # print(instances[0])
 
-    # for key in instances[0].keys():
-    #     print(key, type(instances[0][key]))
+            # for key in instances[0].keys():
+            #     print(key, type(instances[0][key]))
 
-    # # Convert to DataFrame and select columns
-    # df = pd.DataFrame(instances)[['instance_id', 'pi_x_exact_sp', 'pi_x_exact_rsp', 'pi_x_clustered_sp', 'pi_x_clustered_rsp', 'pi_x_mnl', 'pi_x_gr',
-    #                               'time_exact_sp', 'time_exact_rsp', 'time_clustered_sp', 'time_clustered_rsp']]
+            # # Convert to DataFrame and select columns
+            # df = pd.DataFrame(instances)[['instance_id', 'pi_x_exact_sp', 'pi_x_exact_rsp', 'pi_x_clustered_sp', 'pi_x_clustered_rsp', 'pi_x_mnl', 'pi_x_gr',
+            #                               'time_exact_sp', 'time_exact_rsp', 'time_clustered_sp', 'time_clustered_rsp']]
 
-    # # Save to Excel
-    # df.to_excel('check_sBB_003.xlsx', index=False)
+            # # Save to Excel
+            # df.to_excel('check_sBB_003.xlsx', index=False)
 
-    df = pd.DataFrame(instances)
-    df.to_excel(file_name + '.xlsx', index=False)
+            df = pd.DataFrame(instances)
+            df.to_excel(file_path + '.xlsx', index=False)
